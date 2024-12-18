@@ -1,0 +1,279 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Non-Preemptive Priority Scheduling</title>
+    <style>
+        table,
+        th,
+        td {
+            border: 1px solid black;
+            border-collapse: collapse;
+        }
+
+        th,
+        td {
+            padding: 10px;
+            text-align: center;
+        }
+
+        .gantt-chart,
+        .queue,
+        .computation {
+            margin-top: 20px;
+        }
+
+        .computation-table {
+            width: 100%;
+            max-width: 600px;
+            border: 1px solid black;
+            border-collapse: collapse;
+        }
+
+        .computation-table th,
+        .computation-table td {
+            border: 1px solid black;
+            padding: 10px;
+            text-align: center;
+        }
+
+        @media (max-width: 600px) {
+
+            table,
+            th,
+            td {
+                font-size: 12px;
+            }
+
+            .computation-table th,
+            .computation-table td {
+                padding: 5px;
+            }
+        }
+
+        .charts {
+            display: flex;
+            flex-direction: row;
+            gap: 1rem;
+        }
+
+        .buttons {
+            margin-top: 20px;
+            display: flex;
+            gap: 10px;
+        }
+
+        .buttons button {
+            padding: 10px 20px;
+            font-size: 16px;
+            cursor: pointer;
+        }
+    </style>
+</head>
+
+<body>
+    <h1>Non-Preemptive Priority Scheduling</h1>
+    <div class="input-table">
+        <table id="inputTable">
+            <tr>
+                <th>Process</th>
+                <th>Arrival Time (ms)</th>
+                <th>Burst Time (ms)</th>
+                <th>Priority</th>
+            </tr>
+            <tr>
+                <td>P1</td>
+                <td><input type="number" id="arrival1" min="0" oninput="validateInputs()"></td>
+                <td><input type="number" id="burst1" min="0" oninput="validateInputs()"></td>
+                <td><input type="number" id="priority1" min="0" oninput="validateInputs()"></td>
+            </tr>
+            <tr>
+                <td>P2</td>
+                <td><input type="number" id="arrival2" min="0" oninput="validateInputs()"></td>
+                <td><input type="number" id="burst2" min="0" oninput="validateInputs()"></td>
+                <td><input type="number" id="priority2" min="0" oninput="validateInputs()"></td>
+            </tr>
+            <tr>
+                <td>P3</td>
+                <td><input type="number" id="arrival3" min="0" oninput="validateInputs()"></td>
+                <td><input type="number" id="burst3" min="0" oninput="validateInputs()"></td>
+                <td><input type="number" id="priority3" min="0" oninput="validateInputs()"></td>
+            </tr>
+            <!-- Add more rows as needed -->
+        </table>
+        <div class="buttons">
+            <button onclick="addRow()">Add Row</button>
+            <button id="scheduleButton" onclick="schedule()" disabled>Schedule</button>
+        </div>
+    </div>
+    <div class="charts">
+
+        <div class="queue" id="queue">
+            <h2>Queue</h2>
+            <table id="queueTable">
+                <tr>
+                    <th>Process</th>
+                </tr>
+            </table>
+        </div>
+        <div class="gantt-chart">
+            <h2>Gantt Chart</h2>
+            <table id="ganttTable">
+                <tr>
+                    <th>Process</th>
+                    <th>Response Time (ms)</th>
+                    <th>Final Time (ms)</th>
+                </tr>
+            </table>
+            <div id="ganttChart"></div>
+        </div>
+    </div>
+    <div class="computation">
+        <h2>Computation</h2>
+        <table class="computation-table">
+            <tr>
+                <th>Metric</th>
+                <th>Value</th>
+            </tr>
+            <tr>
+                <td>CPU Utilization</td>
+                <td id="cpuUtilization"></td>
+            </tr>
+            <tr>
+                <td>Throughput</td>
+                <td id="throughput"></td>
+            </tr>
+            <tr>
+                <td>Average Waiting Time</td>
+                <td id="averageWaitingTime"></td>
+            </tr>
+            <tr>
+                <td>Average Turnaround Time</td>
+                <td id="averageTurnaroundTime"></td>
+            </tr>
+        </table>
+    </div>
+    <script>
+        let processCount = 3;
+
+        function addRow() {
+            processCount++;
+            const table = document.getElementById('inputTable');
+            const row = table.insertRow();
+            row.innerHTML = `
+                <td>P${processCount}</td>
+                <td><input type="number" id="arrival${processCount}" min="0" oninput="validateInputs()"></td>
+                <td><input type="number" id="burst${processCount}" min="0" oninput="validateInputs()"></td>
+                <td><input type="number" id="priority${processCount}" min="0" oninput="validateInputs()"></td>
+            `;
+        }
+
+        function validateInputs() {
+            let allValid = true;
+            for (let i = 1; i <= processCount; i++) {
+                const arrival = document.getElementById(`arrival${i}`).value;
+                const burst = document.getElementById(`burst${i}`).value;
+                const priority = document.getElementById(`priority${i}`).value;
+                if (arrival === '' || burst === '' || priority === '' || arrival < 0 || burst < 0 || priority < 0) {
+                    allValid = false;
+                    break;
+                }
+            }
+            document.getElementById('scheduleButton').disabled = !allValid;
+        }
+
+        function schedule() {
+            const processes = [];
+            for (let i = 1; i <= processCount; i++) {
+                const arrival = parseInt(document.getElementById(`arrival${i}`).value);
+                const burst = parseInt(document.getElementById(`burst${i}`).value);
+                const priority = parseInt(document.getElementById(`priority${i}`).value);
+                if (!isNaN(arrival) && !isNaN(burst) && !isNaN(priority)) {
+                    processes.push({ id: `P${i}`, arrival, burst, priority, order: i });
+                }
+            }
+
+            processes.sort((a, b) => a.arrival - b.arrival || a.priority - b.priority || a.burst - b.burst || a.order - b.order);
+
+            let currentTime = 0;
+            const ganttChart = document.getElementById('ganttChart');
+            const ganttTable = document.getElementById('ganttTable');
+            const queueTable = document.getElementById('queueTable');
+            ganttChart.innerHTML = '';
+            ganttTable.innerHTML = `
+                <tr>
+                    <th>Process</th>
+                    <th>Response Time (ms)</th>
+                    <th>Final Time (ms)</th>
+                </tr>
+            `;
+            queueTable.innerHTML = `
+                <tr>
+                    <th>Process</th>
+                </tr>
+            `;
+
+            processes.forEach(process => {
+                const row = queueTable.insertRow();
+                row.innerHTML = `<td>${process.id}</td>`;
+            });
+
+            processes.forEach(process => {
+                if (currentTime < process.arrival) {
+                    const idleRow = ganttTable.insertRow();
+                    idleRow.innerHTML = `
+                        <td>Idle</td>
+                        <td>${currentTime}</td>
+                        <td>${process.arrival}</td>
+                    `;
+                    currentTime = process.arrival;
+                }
+                const startTime = currentTime;
+                currentTime += process.burst;
+                const endTime = currentTime;
+
+                const row = ganttTable.insertRow();
+                row.innerHTML = `
+                    <td>${process.id}</td>
+                    <td>${startTime}</td>
+                    <td>${endTime}</td>
+                `;
+            });
+
+            calculateMetrics(processes);
+        }
+
+        function calculateMetrics(processes) {
+            let totalBurstTime = 0;
+            let totalWaitingTime = 0;
+            let totalTurnaroundTime = 0;
+            let currentTime = 0;
+
+            processes.forEach(process => {
+                if (currentTime < process.arrival) {
+                    currentTime = process.arrival;
+                }
+                const waitingTime = currentTime - process.arrival;
+                totalWaitingTime += waitingTime;
+                currentTime += process.burst;
+                const turnaroundTime = currentTime - process.arrival;
+                totalTurnaroundTime += turnaroundTime;
+                totalBurstTime += process.burst;
+            });
+
+            const cpuUtilization = (totalBurstTime / currentTime) * 100;
+            const throughput = processes.length / currentTime;
+            const averageWaitingTime = totalWaitingTime / processes.length;
+            const averageTurnaroundTime = totalTurnaroundTime / processes.length;
+
+            document.getElementById('cpuUtilization').innerText = `${cpuUtilization.toFixed(2)}%`;
+            document.getElementById('throughput').innerText = `${throughput.toFixed(2)} ms`;
+            document.getElementById('averageWaitingTime').innerText = `${averageWaitingTime.toFixed(2)} ms`;
+            document.getElementById('averageTurnaroundTime').innerText = `${averageTurnaroundTime.toFixed(2)} ms`;
+        }
+    </script>
+</body>
+
+</html>
