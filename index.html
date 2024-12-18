@@ -310,34 +310,46 @@
                 </tr>
             `;
 
-            processes.forEach(process => {
-                const row = queueTable.insertRow();
-                row.innerHTML = `<td>${process.id}</td>`;
+            // Insert processes into the queue table with a delay
+            processes.forEach((process, index) => {
+                setTimeout(() => {
+                    const row = queueTable.insertRow();
+                    row.innerHTML = `<td>${process.id}</td>`;
+                }, index * 500);
             });
 
-            processes.forEach(process => {
-                if (currentTime < process.arrival) {
-                    const idleRow = ganttTable.insertRow();
-                    idleRow.innerHTML = `
-                        <td>Idle</td>
-                        <td>${currentTime}</td>
-                        <td>${process.arrival}</td>
+            // Insert processes into the Gantt chart with a delay
+            processes.forEach((process, index) => {
+                setTimeout(() => {
+                    if (currentTime < process.arrival) {
+                        const idleRow = ganttTable.insertRow();
+                        idleRow.innerHTML = `
+                            <td>Idle</td>
+                            <td>${currentTime}</td>
+                            <td>${process.arrival}</td>
+                        `;
+                        currentTime = process.arrival;
+                    }
+                    const startTime = currentTime;
+                    currentTime += process.burst;
+                    const endTime = currentTime;
+
+                    const row = ganttTable.insertRow();
+                    row.innerHTML = `
+                        <td>${process.id}</td>
+                        <td>${startTime}</td>
+                        <td>${endTime}</td>
                     `;
-                    currentTime = process.arrival;
-                }
-                const startTime = currentTime;
-                currentTime += process.burst;
-                const endTime = currentTime;
-
-                const row = ganttTable.insertRow();
-                row.innerHTML = `
-                    <td>${process.id}</td>
-                    <td>${startTime}</td>
-                    <td>${endTime}</td>
-                `;
+                }, processes.length * 500 + index * 500);
             });
 
-            calculateMetrics(processes);
+            setTimeout(() => {
+                calculateMetrics(processes);
+            }, processes.length * 1000);
+
+            setTimeout(() => {
+                displayMetrics();
+            }, processes.length * 1000 + 500);
         }
 
         function calculateMetrics(processes) {
@@ -367,6 +379,14 @@
             document.getElementById('throughput').innerText = `${throughput.toFixed(2)} ms`;
             document.getElementById('averageWaitingTime').innerText = `${averageWaitingTime.toFixed(2)} ms`;
             document.getElementById('averageTurnaroundTime').innerText = `${averageTurnaroundTime.toFixed(2)} ms`;
+        }
+
+        function displayMetrics() {
+            // Display the metrics after the delay
+            document.getElementById('cpuUtilization').style.visibility = 'visible';
+            document.getElementById('throughput').style.visibility = 'visible';
+            document.getElementById('averageWaitingTime').style.visibility = 'visible';
+            document.getElementById('averageTurnaroundTime').style.visibility = 'visible';
         }
 
         function openModal() {
